@@ -1,0 +1,17 @@
+{
+  "name": "url-safety",
+  "module": "index.ts",
+  "type": "module",
+  "exports": {
+    "./client": "./index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "ipaddr.js": "^2.2.0"
+  }
+}
