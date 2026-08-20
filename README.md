@@ -9,8 +9,8 @@ This project started as a build my friend and I worked through together, based o
 A decoupled producer/consumer pipeline built as a Bun + Turborepo monorepo:
 
 - **`apps/pusher`** — runs on an interval, reads every monitored website from Postgres, and pushes `{url, id}` pairs onto a Redis Stream.
-- **`apps/worker`** — a consumer-group reader on that stream (`XREADGROUP`); performs an HTTP GET against each URL, times the response, and writes a `website_tick` row (`Up`/`Down`, latency, region) to Postgres. Run multiple instances with different `REGION_ID`/`WORKER_ID` values to simulate multi-region checking.
-- **`apps/api`** — Express + JWT-authenticated REST API: `POST /website`, `GET /status/:websiteId`, `POST /user/signup`, `POST /user/signin`.
+- **`apps/worker`** — a consumer-group reader on that stream (`XREADGROUP`); performs an HTTP GET against each URL, times the response, and writes a `website_tick` row (`Up`/`Down`/`Unknown`, latency, region) to Postgres. Run multiple instances with different `REGION_SLUG`/`WORKER_ID` values to simulate multi-region checking.
+- **`apps/api`** — Express + JWT-authenticated REST API: `POST /website`, `GET /websites`, `GET /status/:websiteId`, `PATCH /website/:id`, `DELETE /website/:id`, `POST /user/signup`, `POST /user/signin`.
 - **`apps/web`** — Next.js dashboard (not yet built out beyond the default scaffold).
 - **`apps/tests`** — `bun:test` + `axios` integration tests that run against a live `apps/api` instance.
 - **`packages/store`** — the shared Prisma schema/client (`user`, `website`, `region`, `website_tick`).
@@ -39,17 +39,16 @@ cp apps/pusher/.env.example apps/pusher/.env
 | `JWT_SECRET` | api | Signs auth tokens |
 | `PORT` | api | Defaults to `3001` |
 | `FRONTEND_URL` | api | Used for the CORS allowlist, defaults to `http://localhost:3000` |
-| `REGION_ID` | worker | Must match an existing `region` row's id (see below) |
+| `REGION_SLUG` | worker | A region's `name` (e.g. `us-east`) — must exist in the `region` table (see seeding below) |
 | `WORKER_ID` | worker | Any unique string identifying this worker instance within its consumer group |
 
-Run migrations:
+Run migrations and seed the fixed set of regions (`us-east`, `eu-west`, `ap-south`):
 
 ```bash
 cd packages/store
 bunx prisma migrate dev
+bunx prisma db seed
 ```
-
-**Known gap:** the `region` table isn't seeded by any script yet, so you currently have to insert one row by hand (e.g. via Prisma Studio: `bunx prisma studio`) before `REGION_ID` will resolve to anything real. A proper seed script is a planned follow-up.
 
 Then, from separate terminals:
 
