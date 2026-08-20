@@ -1,29 +1,55 @@
-// require("dotenv").config();
+import "./env";
 import jwt from "jsonwebtoken";
 import express from "express"
+import cors from "cors";
+import rateLimit from "express-rate-limit";
 const app = express();
 import { prismaClient } from "store/client";
-import { AuthInput } from "./types";
+import { AuthInput, WebsiteInput } from "./types";
 import { authMiddleware } from "./middleware";
+import { env } from "./env";
 
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Key by IP + username rather than IP alone, so repeated signup/signin
+    // attempts against ONE account are throttled without capping how many
+    // distinct accounts a single IP can create/use (e.g. in tests, or NAT'd offices).
+    keyGenerator: (req) => `${req.ip}:${(req.body as { username?: string } | undefined)?.username ?? "unknown"}`,
+});
+
+app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 
 app.post("/website", authMiddleware, async (req, res) => {
-    if (!req.body.url) {
+    const data = WebsiteInput.safeParse(req.body);
+    if (!data.success) {
         res.status(411).json({});
         return
     }
-    const website = await prismaClient.website.create({
-        data: {
-            url: req.body.url,
-            time_added: new Date(),
-            user_id: req.userId!
-        }
-    })
 
-    res.json({
-        id: website.id
-    })
+    try {
+        const website = await prismaClient.website.create({
+            data: {
+                url: data.data.url,
+                time_added: new Date(),
+                user_id: req.userId!
+            }
+        })
+
+        res.json({
+            id: website.id
+        })
+    } catch(e: any) {
+        if (e?.code === "P2002") {
+            res.status(409).json({ message: "You're already monitoring this URL" });
+            return;
+        }
+        console.log(e);
+        res.status(500).json({});
+    }
 });
 
 app.get("/status/:websiteId", authMiddleware, async (req, res) => {
@@ -57,7 +83,7 @@ app.get("/status/:websiteId", authMiddleware, async (req, res) => {
 
 })
 
-app.post("/user/signup", async (req, res) => {
+app.post("/user/signup", authLimiter, async (req, res) => {
     const data = AuthInput.safeParse(req.body);
     if (!data.success) {
         console.log(data.error.toString());
@@ -81,7 +107,7 @@ app.post("/user/signup", async (req, res) => {
     }
 })
 
-app.post("/user/signin", async (req, res) => {
+app.post("/user/signin", authLimiter, async (req, res) => {
     const data = AuthInput.safeParse(req.body);
     if (!data.success) {
         res.status(403).send("");
@@ -101,7 +127,7 @@ app.post("/user/signin", async (req, res) => {
 
     let token = jwt.sign({
         sub: user.id
-    }, process.env.JWT_SECRET!)
+    }, env.JWT_SECRET)
 
 
     res.json({
@@ -109,4 +135,4 @@ app.post("/user/signin", async (req, res) => {
     })
 })
 
-app.listen(process.env.PORT || 3001);
+app.listen(env.PORT);
