@@ -1,19 +1,14 @@
 import axios from "axios";
-import { xAckBulk, xReadGroup } from "redisstream/client";
+import { env } from "./env";
+import { ensureConsumerGroup, xAckBulk, xReadGroup } from "redisstream/client";
 import { prismaClient } from "store/client";
 
-const REGION_ID = process.env.REGION_ID!;
-const WORKER_ID = process.env.WORKER_ID!;
-
-if (!REGION_ID) {
-    throw new Error("Region not provided");
-}
-
-if (!WORKER_ID) {
-    throw new Error("Region not provided");
-}
+const REGION_ID = env.REGION_ID;
+const WORKER_ID = env.WORKER_ID;
 
 async function main() {
+    await ensureConsumerGroup(REGION_ID);
+
     while(1) {
         const response = await xReadGroup(REGION_ID, WORKER_ID);
 
@@ -25,7 +20,7 @@ async function main() {
         await Promise.all(promises);
         console.log(promises.length);
 
-        xAckBulk(REGION_ID, response.map(({id}) => id));
+        await xAckBulk(REGION_ID, response.map(({id}) => id));
     }
 }
 
@@ -33,8 +28,8 @@ async function fetchWebsite(url: string, websiteId: string) {
     return new Promise<void>((resolve, reject) => {
         const startTime = Date.now();
 
-        axios.get(url)
-            .then(async () => { 
+        axios.get(url, { timeout: 10_000 })
+            .then(async () => {
                 const endTime = Date.now();
                 await prismaClient.website_tick.create({
                     data: {
