@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
     const header = req.headers.authorization;
     if (!header || !header.startsWith("Bearer ")) {
-        res.status(403).send("");
+        res.status(401).json({ error: "Missing or malformed Authorization header" });
         return;
     }
     const token = header.slice("Bearer ".length);
@@ -13,7 +13,10 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
         req.userId = data.sub as string;
         next();
     } catch(e) {
-        console.log(e);
-        res.status(403).send("");
+        if (e instanceof jwt.TokenExpiredError) {
+            res.status(401).json({ error: "Token expired" });
+            return;
+        }
+        res.status(401).json({ error: "Invalid token" });
     }
 }

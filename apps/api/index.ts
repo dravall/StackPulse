@@ -1,5 +1,6 @@
 import "./env";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 import express from "express"
 import cors from "cors";
 import rateLimit from "express-rate-limit";
@@ -24,10 +25,10 @@ app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 
 app.post("/website", authMiddleware, async (req, res) => {
-    const data = WebsiteInput.safeParse(req.body);
+    const data = await WebsiteInput.safeParseAsync(req.body);
     if (!data.success) {
-        res.status(411).json({});
-        return
+        res.status(400).json({ error: data.error.issues[0]?.message ?? "Invalid input" });
+        return;
     }
 
     try {
@@ -44,12 +45,41 @@ app.post("/website", authMiddleware, async (req, res) => {
         })
     } catch(e: any) {
         if (e?.code === "P2002") {
-            res.status(409).json({ message: "You're already monitoring this URL" });
+            res.status(409).json({ error: "You're already monitoring this URL" });
             return;
         }
-        console.log(e);
-        res.status(500).json({});
+        throw e;
     }
+});
+
+app.get("/websites", authMiddleware, async (req, res) => {
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+    const cursor = typeof req.query.cursor === "string" ? req.query.cursor : undefined;
+
+    const websites = await prismaClient.website.findMany({
+        where: { user_id: req.userId! },
+        orderBy: { id: "asc" },
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        include: {
+            ticks: {
+                orderBy: [{ createdAt: 'desc' }],
+                take: 1
+            }
+        }
+    });
+
+    const hasMore = websites.length > limit;
+    const page = hasMore ? websites.slice(0, limit) : websites;
+
+    res.json({
+        websites: page.map(w => ({
+            id: w.id,
+            url: w.url,
+            latestTick: w.ticks[0] ?? null
+        })),
+        nextCursor: hasMore ? page[page.length - 1]!.id : null
+    });
 });
 
 app.get("/status/:websiteId", authMiddleware, async (req, res) => {
@@ -69,8 +99,8 @@ app.get("/status/:websiteId", authMiddleware, async (req, res) => {
     })
 
     if (!website) {
-        res.status(409).json({
-            message: "Not found"
+        res.status(404).json({
+            error: "Not found"
         })
         return;
     }
@@ -78,61 +108,109 @@ app.get("/status/:websiteId", authMiddleware, async (req, res) => {
     res.json({
         url: website.url,
         id: website.id,
-        user_id: website.user_id
+        user_id: website.user_id,
+        latestTick: website.ticks[0] ?? null
     })
 
 })
 
-app.post("/user/signup", authLimiter, async (req, res) => {
-    const data = AuthInput.safeParse(req.body);
+app.patch("/website/:id", authMiddleware, async (req, res) => {
+    const data = await WebsiteInput.safeParseAsync(req.body);
     if (!data.success) {
-        console.log(data.error.toString());
-        res.status(403).send("");
+        res.status(400).json({ error: data.error.issues[0]?.message ?? "Invalid input" });
         return;
     }
 
     try {
-        let user = await prismaClient.user.create({
+        const result = await prismaClient.website.updateMany({
+            where: { id: req.params.id, user_id: req.userId! },
+            data: { url: data.data.url }
+        });
+
+        if (result.count === 0) {
+            res.status(404).json({ error: "Not found" });
+            return;
+        }
+
+        res.json({ id: req.params.id, url: data.data.url });
+    } catch (e: any) {
+        if (e?.code === "P2002") {
+            res.status(409).json({ error: "You're already monitoring this URL" });
+            return;
+        }
+        throw e;
+    }
+});
+
+app.delete("/website/:id", authMiddleware, async (req, res) => {
+    const result = await prismaClient.website.deleteMany({
+        where: { id: req.params.id, user_id: req.userId! }
+    });
+
+    if (result.count === 0) {
+        res.status(404).json({ error: "Not found" });
+        return;
+    }
+
+    res.status(204).send();
+});
+
+app.post("/user/signup", authLimiter, async (req, res) => {
+    const data = AuthInput.safeParse(req.body);
+    if (!data.success) {
+        res.status(400).json({ error: data.error.issues[0]?.message ?? "Invalid input" });
+        return;
+    }
+
+    try {
+        const user = await prismaClient.user.create({
             data: {
                 username: data.data.username,
-                password: data.data.password
+                password: await bcrypt.hash(data.data.password, 12)
             }
-    })
+        })
         res.json({
             id: user.id
         })
-    } catch(e) {
-        console.log(e);
-        res.status(403).send("");
+    } catch(e: any) {
+        if (e?.code === "P2002") {
+            res.status(409).json({ error: "Username already taken" });
+            return;
+        }
+        throw e;
     }
 })
 
 app.post("/user/signin", authLimiter, async (req, res) => {
     const data = AuthInput.safeParse(req.body);
     if (!data.success) {
-        res.status(403).send("");
+        res.status(400).json({ error: data.error.issues[0]?.message ?? "Invalid input" });
         return;
     }
 
-    let user = await prismaClient.user.findFirst({
+    const user = await prismaClient.user.findFirst({
         where: {
             username: data.data.username
         }
     })
 
-    if (user?.password !== data.data.password) {
-        res.status(403).send("");
+    if (!user || !(await bcrypt.compare(data.data.password, user.password))) {
+        res.status(401).json({ error: "Invalid username or password" });
         return;
     }
 
-    let token = jwt.sign({
+    const token = jwt.sign({
         sub: user.id
-    }, env.JWT_SECRET)
-
+    }, env.JWT_SECRET, { expiresIn: "1h" })
 
     res.json({
         jwt: token
     })
 })
+
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error(err);
+    res.status(err?.status ?? 500).json({ error: err?.message ?? "Internal Server Error" });
+});
 
 app.listen(env.PORT);
