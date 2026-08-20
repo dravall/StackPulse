@@ -1,3 +1,4 @@
+import "./env";
 import { prismaClient } from "store/client";
 import { xAddBulk } from "redisstream/client";
 
