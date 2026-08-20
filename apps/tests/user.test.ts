@@ -12,7 +12,7 @@ describe("Signup endpoints", () => {
                 email: USER_NAME,
                 password: "password"
             })
-        ).rejects.toMatchObject({ response: { status: 403 } });
+        ).rejects.toMatchObject({ response: { status: 400 } });
     })
 
     it("Is able to sign up if body is correct", async () => {
@@ -33,7 +33,7 @@ describe("Signin endpoints", () => {
                 email: USER_NAME,
                 password: "password"
             })
-        ).rejects.toMatchObject({ response: { status: 403 } });
+        ).rejects.toMatchObject({ response: { status: 400 } });
     })
 
     it("Is able to sign in if body is correct", async () => {
@@ -43,5 +43,14 @@ describe("Signin endpoints", () => {
         });
         expect(res.status).toBe(200);
         expect(res.data.jwt).toBeDefined();
+    })
+
+    it("Isnt able to sign in with the wrong password", async () => {
+        await expect(
+            axios.post(`${BACKEND_URL}/user/signin`, {
+                username: USER_NAME,
+                password: "wrongpassword"
+            })
+        ).rejects.toMatchObject({ response: { status: 401 } });
     })
 })
