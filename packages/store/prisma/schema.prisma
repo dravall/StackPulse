@@ -22,12 +22,14 @@ model user {
 } 
 
 model website {
-  id            String  @id    @default(uuid()) 
+  id            String  @id    @default(uuid())
   url           String
   user_id       String
   time_added     DateTime
   ticks         website_tick[]
   user          user    @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, url])
 }
 
 model region {
@@ -45,6 +47,8 @@ model website_tick {
   region_id               String
   website_id              String
   createdAt               DateTime    @default(now())
+
+  @@index([website_id, createdAt])
 }
 
 enum website_status {
