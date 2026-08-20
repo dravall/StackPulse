@@ -12,19 +12,13 @@ describe("Website gets created", () => {
     })
 
     it("Website not created if url is not present", async () => {
-        try {
-            await axios.post(`${BACKEND_URL}/website`, {
-                
-            }, {
+        await expect(
+            axios.post(`${BACKEND_URL}/website`, {}, {
                 headers: {
-                    Authorization: token
+                    Authorization: `Bearer ${token}`
                 }
-            });
-            expect(false, "Website created when it shouldnt");
-        } catch(e) {
-
-        }
-
+            })
+        ).rejects.toMatchObject({ response: { status: 411 } });
     })
 
     it("Website is created if url is present", async () => {
@@ -32,7 +26,7 @@ describe("Website gets created", () => {
             url: "https://google.com"
         }, {
             headers: {
-                Authorization: token
+                Authorization: `Bearer ${token}`
             }
         })
         expect(response.data.id).not.toBeNull();
@@ -40,14 +34,11 @@ describe("Website gets created", () => {
 
 
     it("Website is not created if the header is not present", async () => {
-        try {
-            const response = await axios.post(`${BACKEND_URL}/website`, {
+        await expect(
+            axios.post(`${BACKEND_URL}/website`, {
                 url: "https://google.com"
-            });
-            expect(false, "Website shouldnt be created if no auth header")
-        } catch(e) {
-
-        }
+            })
+        ).rejects.toMatchObject({ response: { status: 403 } });
     })
 })
 
@@ -69,17 +60,15 @@ describe("Can fetch website", () => {
             url: "https://hdjjhdhdjhdj.com/"
         }, {
             headers: {
-                Authorization: token1
+                Authorization: `Bearer ${token1}`
             }
         })
 
         const getWebsiteResponse = await axios.get(`${BACKEND_URL}/status/${websiteResponse.data.id}`, {
             headers: {
-                Authorization: token1
+                Authorization: `Bearer ${token1}`
             }
         })
-
-        console.log(getWebsiteResponse.data)
 
         expect(getWebsiteResponse.data.id).toBe(websiteResponse.data.id)
         expect(getWebsiteResponse.data.user_id).toBe(userId1)
@@ -90,20 +79,16 @@ describe("Can fetch website", () => {
             url: "https://hdjjhdhdjhdj.com/"
         }, {
             headers: {
-                Authorization: token1
+                Authorization: `Bearer ${token1}`
             }
         })
 
-        try {
-
-            await axios.get(`${BACKEND_URL}/status/${websiteResponse.data.id}`, {
+        await expect(
+            axios.get(`${BACKEND_URL}/status/${websiteResponse.data.id}`, {
                 headers: {
-                    Authorization: token1
+                    Authorization: `Bearer ${token2}`
                 }
             })
-            expect(false, "Should be able to access website of a diff user")
-        } catch(e) {
-
-        }
+        ).rejects.toMatchObject({ response: { status: 409 } });
     })
 })
