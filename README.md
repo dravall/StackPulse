@@ -2,7 +2,7 @@
 
 An uptime-monitoring service (a BetterUptime/UptimeRobot-style clone): register a website URL, and a background system periodically checks whether it's reachable, recording latency and up/down status from region-aware workers.
 
-This project started as a build my friend and I worked through together, based on a course project structure (see `steps.png` for the original course roadmap). The improvements documented below — security fixes, reliability fixes, test corrections, and this README — are my own follow-up work on top of that base.
+This project is built on an unmodified reference implementation from a course project structure (see `steps.png` for the original course roadmap). Everything documented below — the security fixes, reliability fixes, test corrections, and this README — is my own follow-up work on top of that base.
 
 ## Architecture
 
@@ -18,9 +18,10 @@ A decoupled producer/consumer pipeline built as a Bun + Turborepo monorepo:
 
 ## Setup
 
-Requires [Bun](https://bun.sh), a running Postgres instance, and a running Redis instance.
+Requires [Bun](https://bun.sh), a running Postgres instance, and a running Redis instance. `docker-compose.yml` provides both:
 
 ```bash
+docker compose up -d
 bun install
 ```
 
@@ -69,4 +70,4 @@ bun test
 
 ## Status
 
-This is a work in progress, not a finished product yet — most notably, there's no alerting/notification system and no real frontend. A full audit of the codebase (`Project-1-Analysis.md`) tracks what's done and what's left.
+This is a work in progress, not a finished product yet — most notably, there's no alerting/notification system and no real frontend beyond the default Next.js scaffold.
