@@ -24,6 +24,10 @@ const authLimiter = rateLimit({
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 
+app.get("/health", (req, res) => {
+    res.status(200).json({ status: "ok" });
+});
+
 app.post("/website", authMiddleware, async (req, res) => {
     const data = await WebsiteInput.safeParseAsync(req.body);
     if (!data.success) {
