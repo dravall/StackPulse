@@ -21,6 +21,7 @@ const authLimiter = rateLimit({
     keyGenerator: (req) => `${req.ip}:${(req.body as { username?: string } | undefined)?.username ?? "unknown"}`,
 });
 
+app.disable("x-powered-by");
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 
@@ -214,7 +215,11 @@ app.post("/user/signin", authLimiter, async (req, res) => {
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     console.error(err);
-    res.status(err?.status ?? 500).json({ error: err?.message ?? "Internal Server Error" });
+    const status = err?.status ?? 500;
+    // Client errors (e.g. malformed JSON) are safe to explain; server errors can carry
+    // internal details such as Prisma messages, so they get a generic response.
+    const message = status < 500 ? err?.message ?? "Bad Request" : "Internal Server Error";
+    res.status(status).json({ error: message });
 });
 
 app.listen(env.PORT);
