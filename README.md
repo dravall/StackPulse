@@ -11,7 +11,7 @@ A decoupled producer/consumer pipeline built as a Bun + Turborepo monorepo:
 - **`apps/pusher`** — runs on an interval, reads every monitored website from Postgres, and pushes `{url, id}` pairs onto a Redis Stream.
 - **`apps/worker`** — a consumer-group reader on that stream (`XREADGROUP`); performs an HTTP GET against each URL, times the response, and writes a `website_tick` row (`Up`/`Down`/`Unknown`, latency, region) to Postgres. Run multiple instances with different `REGION_SLUG`/`WORKER_ID` values to simulate multi-region checking.
 - **`apps/api`** — Express + JWT-authenticated REST API: `POST /website`, `GET /websites`, `GET /status/:websiteId`, `PATCH /website/:id`, `DELETE /website/:id`, `POST /user/signup`, `POST /user/signin`.
-- **`apps/web`** — Next.js dashboard (not yet built out beyond the default scaffold).
+- **`apps/web`** — Next.js dashboard: sign in/up, a live sites table (status, response time, last check), add/edit/delete, all talking to `apps/api` directly from the client.
 - **`apps/tests`** — `bun:test` + `axios` integration tests that run against a live `apps/api` instance.
 - **`packages/store`** — the shared Prisma schema/client (`user`, `website`, `region`, `website_tick`).
 - **`packages/redisstream`** — a thin wrapper around Redis Streams (`xAdd`, `xReadGroup`, `xAck`, consumer-group bootstrap).
@@ -32,6 +32,7 @@ cp packages/store/.env.example packages/store/.env
 cp apps/api/.env.example apps/api/.env
 cp apps/worker/.env.example apps/worker/.env
 cp apps/pusher/.env.example apps/pusher/.env
+cp apps/web/.env.example apps/web/.env
 ```
 
 | Var | Used by | Notes |
@@ -42,6 +43,7 @@ cp apps/pusher/.env.example apps/pusher/.env
 | `FRONTEND_URL` | api | Used for the CORS allowlist, defaults to `http://localhost:3000` |
 | `REGION_SLUG` | worker | A region's `name` (e.g. `us-east`) — must exist in the `region` table (see seeding below) |
 | `WORKER_ID` | worker | Any unique string identifying this worker instance within its consumer group |
+| `NEXT_PUBLIC_API_URL` | web | Where the dashboard reaches `apps/api`, defaults to `http://localhost:3001` |
 
 Run migrations and seed the fixed set of regions (`us-east`, `eu-west`, `ap-south`):
 
@@ -57,6 +59,7 @@ Then, from separate terminals:
 cd apps/api && bun run index.ts
 cd apps/worker && bun run index.ts
 cd apps/pusher && bun run index.ts
+cd apps/web && bun dev
 ```
 
 ## Tests
@@ -70,4 +73,4 @@ bun test
 
 ## Status
 
-This is a work in progress, not a finished product yet — most notably, there's no alerting/notification system and no real frontend beyond the default Next.js scaffold.
+This is a work in progress, not a finished product yet — most notably, there's no alerting/notification system, and the dashboard only shows each site's latest check (no history/charts, since the API doesn't expose that yet).
