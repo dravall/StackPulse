@@ -10,8 +10,12 @@
   },
   "devDependencies": {
     "prettier": "^3.5.3",
-    "turbo": "^2.5.4",
+    "turbo": "^2.11.7",
     "typescript": "5.8.2"
+  },
+  "overrides": {
+    "path-to-regexp": "^8.4.2",
+    "qs": "^6.16.0"
   },
   "engines": {
     "node": ">=18"
