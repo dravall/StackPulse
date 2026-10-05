@@ -11,19 +11,13 @@ type MessageType = {
         url: string,
         id: string
     }
-    //@ts-ignore
 }
+
+// node-redis types XREADGROUP's reply as a generic union; with the default RESP2
+// protocol it is an array of { name, messages } entries, one per stream read.
+type StreamReadReply = { name: string, messages: MessageType[] }[] | null;
 
 const STREAM_NAME = "betteruptime:website";
-
-async function xAdd({url, id}: WebsiteEvent) {
-    await client.xAdd(
-        STREAM_NAME, '*', {
-            url,
-            id
-        }
-    );
-}
 
 export async function xAddBulk(websites: WebsiteEvent[]) {
     if (websites.length === 0) {
@@ -58,10 +52,7 @@ export async function xReadGroup(consumerGroup: string, workerId: string): Promi
         }
     );
 
-    //@ts-ignore
-    let messages: MessageType[] | undefined = res?.[0]?.messages;
-
-    return messages;
+    return (res as StreamReadReply)?.[0]?.messages;
 }
 
 export async function xAckBulk(consumerGroup: string, eventIds: string[]) {
