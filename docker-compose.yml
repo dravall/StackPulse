@@ -1,3 +1,6 @@
+# Local development only. These credentials are defaults for a throwaway
+# local database; never reuse them anywhere real. Ports are bound to
+# 127.0.0.1 so the databases are not reachable from other machines.
 services:
   postgres:
     image: postgres:16
@@ -6,7 +9,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - stackpulse-postgres:/var/lib/postgresql/data
     healthcheck:
@@ -18,7 +21,7 @@ services:
   redis:
     image: redis:7
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
