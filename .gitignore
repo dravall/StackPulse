@@ -5,12 +5,9 @@ node_modules
 .pnp
 .pnp.js
 
-# Local env files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Local env files (keep only the committed examples)
+.env*
+!.env.example
 
 # Testing
 coverage
@@ -36,3 +33,14 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+*.key
+*.log
+*.sqlite
+*.db
+
+# Editors
+.vscode/
+.idea/
+
+# Local media/render scratch
+brag-output*/
