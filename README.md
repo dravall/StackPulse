@@ -4,9 +4,9 @@ An uptime monitor. You add a URL, a scheduler puts it on a Redis Streams queue e
 
 Built with TypeScript on Bun: an Express API, a Next.js dashboard, Postgres through Prisma, and Redis Streams between the scheduler and the workers.
 
-## What I changed from the course base
+## What I changed from v1
 
-| Problem in the base | What I did | Commit |
+| Problem in v1 | What I did | Commit |
 |---|---|---|
 | Passwords were stored in plain text and compared with `!==` | bcrypt (cost 12) on signup, `bcrypt.compare` on signin | [`6c70b26`](https://github.com/dravall/StackPulse/commit/6c70b26) |
 | Login tokens never expired | JWTs expire after 1 hour | [`6c70b26`](https://github.com/dravall/StackPulse/commit/6c70b26) |
