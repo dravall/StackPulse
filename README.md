@@ -4,11 +4,7 @@ An uptime monitor. You add a URL, a scheduler puts it on a Redis Streams queue e
 
 Built with TypeScript on Bun: an Express API, a Next.js dashboard, Postgres through Prisma, and Redis Streams between the scheduler and the workers.
 
-## Where this came from
-
-StackPulse started as a course reference implementation of a BetterUptime-style monitor (the course roadmap is in [`steps.png`](./steps.png)). That base is the [first commit](https://github.com/dravall/StackPulse/commit/63067e3). It ran, but before building on it I reviewed every file the way I'd review a pull request. Everything after the first commit is my work, and each fix is its own commit, so you can check any of it.
-
-### What I changed from the course base
+## What I changed from the course base
 
 | Problem in the base | What I did | Commit |
 |---|---|---|
